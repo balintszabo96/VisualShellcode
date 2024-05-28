@@ -1,8 +1,8 @@
 import ctypes
+import os
 
-handle = ctypes.WinDLL(r"b:\projects\VisualShellcode\BddisasmIntegration\x64\Release\BddisasmIntegration.dll")
-print(handle.Dummy)
-with open(r'b:\projects\VisualShellcode\test\shellcodes\exec_calc_x64', 'rb') as f:
+handle = ctypes.WinDLL(r".\BddisasmIntegration\x64\Release\BddisasmIntegration.dll")
+with open(r"e:\ex\projects\VisualShellcode\test\shellcodes\exec_calc_x64", 'rb') as f:
     shellcode = f.read()
 buff = ctypes.create_string_buffer(shellcode, len(shellcode))
 shemuStatus = ctypes.c_uint32(0)
