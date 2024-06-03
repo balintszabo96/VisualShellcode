@@ -4,8 +4,9 @@ from utils.logic import get_disasm
 app = Flask(__name__)
 
 def process(input_text, architecture):
-    disasm = get_disasm(input_text.replace(' ', ''), architecture).split('\n')
-    return disasm
+    instructions = get_disasm(input_text.replace(' ', ''), architecture)
+    #return [str(inst) for inst in instructions]
+    return instructions
 
 @app.route('/', methods=['GET', 'POST'])
 def index():

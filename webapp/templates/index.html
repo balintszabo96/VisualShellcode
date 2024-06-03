@@ -18,6 +18,29 @@
             width: 80%;
             margin: auto;
         }
+        .column1 {
+            float: left;
+            width: 15%;
+        }
+        .column2 {
+            float: left;
+            width: 15%;
+        }
+        .column3 {
+            float: left;
+            width: 8%;
+        }
+        .column4 {
+            float: left;
+            width: 35%;
+        }
+
+        /* Clear floats after the columns */
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
     </style>
 </head>
 <body>
@@ -29,15 +52,21 @@
         <form method="POST">
             <textarea name="text_input" rows="12" cols="100">{{ submitted_text }}</textarea><br><br>
             <label for="architecture">Architecture:</label>
-            <input type="radio" id="x86" name="architecture" value="x86" {% if architecture == 'x86' %}checked{% endif %} checked>
+            <input type="radio" id="x86" name="architecture" value="x86" {% if architecture == 'x86' %}checked{% endif %}>
             <label for="x86">x86</label>
-            <input type="radio" id="x64" name="architecture" value="x64" {% if architecture == 'x64' %}checked{% endif %}>
+            <input type="radio" id="x64" name="architecture" value="x64" {% if architecture == 'x64' %}checked{% endif %} checked>
             <label for="x64">x64</label><br><br>
             <input type="submit" value="Submit">
         </form>
         <h2>Disassembly</h2>
         {% for para in processed_text %}
-            <p>{{para}}</p>
+            <div class="row">
+                <div class="column1">{{para.address}}</div>
+                <div class="column2">{{para.opcodes}}</div>
+                <div class="column3">{{para.operation}}</div>
+                <div class="column4">{{para.text}}</div>
+            </div>
+            
         {% endfor %}
 </body>
 </html>
