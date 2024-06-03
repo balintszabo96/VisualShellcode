@@ -17,6 +17,13 @@ ExpAnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsig
 {
     return AnalyzeShellcode(Shellcode, Size, Is32Bit, ShemuStatus, Flags);
 }
+
+__declspec(dllexport)
+int
+ExpDisasmShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, char* Buffer, uint64_t BufSize)
+{
+    return DisassembleShellcode(Shellcode, Size, Is32Bit, Buffer, BufSize);
+}
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,

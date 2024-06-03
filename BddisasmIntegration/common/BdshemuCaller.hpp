@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "bdshemu.h"
+#include "bddisasm.h"
 
 enum class Status
 {
@@ -12,3 +13,6 @@ enum class Status
 
 int
 AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned int* ShemuStatus, uint64_t* Flags);
+
+int
+DisassembleShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, char* Buffer, uint64_t BufSize);

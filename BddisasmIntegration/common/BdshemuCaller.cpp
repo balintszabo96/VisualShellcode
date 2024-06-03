@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <Windows.h>
 #include "BdshemuCaller.hpp"
 
 extern "C" {
@@ -152,4 +153,139 @@ cleanup:
         free(ctx);
     }
     return static_cast<int>(status);
+}
+
+const char* gSpaces[16] =
+{
+    "",
+    "  ",
+    "    ",
+    "      ",
+    "        ",
+    "          ",
+    "            ",
+    "              ",
+    "                ",
+    "                  ",
+    "                    ",
+    "                      ",
+    "                        ",
+    "                          ",
+    "                            ",
+    "                              ",
+};
+
+void
+print_instruction(
+    __in SIZE_T Rip,
+    __in PINSTRUX Instrux,
+    __in char* Buffer,
+    __in uint64_t BufSize
+)
+{
+    char instruxText[ND_MIN_BUF_SIZE];
+    DWORD k = 0, idx = 0, i = 0;
+    CHAR tempBuf[1000] = { 0 };
+
+    sprintf_s(tempBuf, 1000, "%p ", (void*)(Rip));
+    strcat_s(Buffer, BufSize, tempBuf);
+    RtlZeroMemory(tempBuf, 1000);
+
+    for (; k < Instrux->Length; k++)
+    {
+        sprintf_s(tempBuf, 1000, "%02x", Instrux->InstructionBytes[k]);
+        strcat_s(Buffer, BufSize, tempBuf);
+        RtlZeroMemory(tempBuf, 1000);
+    }
+
+    sprintf_s(tempBuf, 1000, "%s", gSpaces[16 - (Instrux->Length & 0xF)]);
+    strcat_s(Buffer, BufSize, tempBuf);
+    RtlZeroMemory(tempBuf, 1000);
+
+    NdToText(Instrux, Rip, ND_MIN_BUF_SIZE, instruxText);
+
+    sprintf_s(tempBuf, 1000, "%s\n", instruxText);
+    strcat_s(Buffer, BufSize, tempBuf);
+    RtlZeroMemory(tempBuf, 1000);
+}
+
+int
+DisassembleShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, char* Buffer, uint64_t BufSize)
+{
+    Shellcode;
+    Size;
+    Is32Bit;
+    Buffer;
+    BufSize;
+
+    // code copied from disasmtool
+    INSTRUX instrux;
+    ND_CONTEXT ctx = { 0 };
+    unsigned long long icount = 0, istart, iend, start, end, itotal = 0, tilen = 0, ticount = 0;
+    SIZE_T rip, fsize = Size;
+    PBYTE buffer = Shellcode;
+    CHAR tempBuf[1000] = { 0 };
+
+    NdInitContext(&ctx);
+
+    ctx.DefCode = Is32Bit ? ND_CODE_32 : ND_CODE_64;
+    ctx.DefData = Is32Bit ? ND_CODE_32 : ND_CODE_64;
+    ctx.DefStack = Is32Bit ? ND_CODE_32 : ND_CODE_64;
+    ctx.VendMode = ND_VEND_ANY; // DON'T CARE
+    ctx.FeatMode = ND_FEAT_ALL;
+
+    // Disassemble
+    rip = 0;
+    while (rip < Size)
+    {
+        NDSTATUS status;
+
+        icount++;
+
+#if defined(ND_ARCH_X86) || defined(ND_ARCH_X64)
+        istart = __rdtsc();
+#else
+        istart = 0;
+#endif
+
+        status = NdDecodeWithContext(&instrux, buffer + rip, fsize - rip, &ctx);
+
+#if defined(ND_ARCH_X86) || defined(ND_ARCH_X64)
+        iend = __rdtsc();
+#else
+        iend = 1;
+#endif
+
+        itotal += iend - istart;
+        if (!ND_SUCCESS(status))
+        {
+            sprintf_s(tempBuf, 1000, "%p ", (void*)(rip));
+            strcat_s(Buffer, BufSize, tempBuf);
+            RtlZeroMemory(tempBuf, 1000);
+
+            sprintf_s(tempBuf, 1000, "%02x", buffer[rip]);
+            strcat_s(Buffer, BufSize, tempBuf);
+            RtlZeroMemory(tempBuf, 1000);
+
+            sprintf_s(tempBuf, 1000, "%s", gSpaces[16 - 1]);
+            strcat_s(Buffer, BufSize, tempBuf);
+            RtlZeroMemory(tempBuf, 1000);
+
+            sprintf_s(tempBuf, 1000, "db 0x%02x (0x%08x)\n", buffer[rip], status);
+            strcat_s(Buffer, BufSize, tempBuf);
+            RtlZeroMemory(tempBuf, 1000);
+
+            rip++;
+        }
+        else
+        {
+            tilen += instrux.Length;
+            ticount++;
+
+            print_instruction(rip, &instrux, Buffer, BufSize);
+
+            rip += instrux.Length;
+        }
+    }
+    return 99;
 }
