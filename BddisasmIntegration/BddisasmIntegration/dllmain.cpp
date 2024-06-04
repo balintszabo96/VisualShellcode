@@ -13,9 +13,9 @@ Dummy(char* String)
 
 __declspec(dllexport)
 int
-ExpAnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned int* ShemuStatus, uint64_t* Flags)
+ExpAnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned int* ShemuStatus, uint64_t* Flags, char* Buffer, uint64_t BufSize)
 {
-    return AnalyzeShellcode(Shellcode, Size, Is32Bit, ShemuStatus, Flags);
+    return AnalyzeShellcode(Shellcode, Size, Is32Bit, ShemuStatus, Flags, Buffer, BufSize);
 }
 
 __declspec(dllexport)

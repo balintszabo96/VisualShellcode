@@ -32,7 +32,11 @@
         }
         .column4 {
             float: left;
-            width: 35%;
+            width: 25%;
+        }
+        .column5 {
+            float: left;
+            width: 15%;
         }
 
         /* Clear floats after the columns */
@@ -65,6 +69,7 @@
                 <div class="column2">{{para.opcodes}}</div>
                 <div class="column3">{{para.operation}}</div>
                 <div class="column4">{{para.text}}</div>
+                <div class="column5">{{para.get_flags()}}</div>
             </div>
             
         {% endfor %}
