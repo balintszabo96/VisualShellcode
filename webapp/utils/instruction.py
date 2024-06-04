@@ -7,6 +7,9 @@ class Instruction:
         self.text = text
         self.flags = []
     
+    def has_flags(self) -> bool:
+        return len(self.flags) > 0
+
     def get_flags(self) -> str:
         return ','.join(self.flags)
 

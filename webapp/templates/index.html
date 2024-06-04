@@ -45,6 +45,13 @@
             display: table;
             clear: both;
         }
+        .red {
+            color: red;
+            font-weight: bold;
+        }
+        .black {
+            color: black;
+        }
     </style>
 </head>
 <body>
@@ -65,11 +72,13 @@
         <h2>Disassembly</h2>
         {% for para in processed_text %}
             <div class="row">
-                <div class="column1">{{para.address}}</div>
-                <div class="column2">{{para.opcodes}}</div>
-                <div class="column3">{{para.operation}}</div>
-                <div class="column4">{{para.text}}</div>
-                <div class="column5">{{para.get_flags()}}</div>
+                <div class="{{'red' if para.has_flags() == True else 'black'}}">
+                    <div class="column1">{{para.address}}</div>
+                    <div class="column2">{{para.opcodes}}</div>
+                    <div class="column3">{{para.operation}}</div>
+                    <div class="column4">{{para.text}}</div>
+                    <div class="column5">{{para.get_flags()}}</div>
+                </div>
             </div>
             
         {% endfor %}
