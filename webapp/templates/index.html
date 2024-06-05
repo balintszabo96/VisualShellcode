@@ -52,12 +52,16 @@
         .black {
             color: black;
         }
+        .flagBtn {
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>VisualShellcode</h1>
     </div>
+    
     <div class="container">
         <h2>Input shellcode as hex characters</h2>
         <form method="POST">
@@ -70,17 +74,52 @@
             <input type="submit" value="Submit">
         </form>
         <h2>Disassembly</h2>
-        {% for para in processed_text %}
+        {% for instruction in processed_text %}
             <div class="row">
-                <div class="{{'red' if para.has_flags() == True else 'black'}}">
-                    <div class="column1">{{para.address}}</div>
-                    <div class="column2">{{para.opcodes}}</div>
-                    <div class="column3">{{para.operation}}</div>
-                    <div class="column4">{{para.text}}</div>
-                    <div class="column5">{{para.get_flags()}}</div>
+                <div class="{{'red' if instruction.has_flags() == True else 'black'}}">
+                    <div class="column1">{{instruction.address}}</div>
+                    <div class="column2">{{instruction.opcodes}}</div>
+                    <div class="column3">{{instruction.operation}}</div>
+                    <div class="column4">{{instruction.text}}</div>
+                    {% for flag in instruction.flags %}
+                        <button class="flagBtn" data-id="{{flag.get_id()}}" data-code="{{flag.get_name()}}">{{flag.name}}</button>
+                        <div class="textContainer" id="{{'flagTextContainer' + flag.get_id()}}"></div>
+                    {% endfor %}
                 </div>
             </div>
             
         {% endfor %}
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const textAreaVisible = {};
+            console.log("Main event triggered")
+            document.querySelectorAll('.flagBtn').forEach(button => {
+                const id = button.getAttribute('data-id');
+                textAreaVisible[id] = false;
+                console.log(id)
+
+                button.addEventListener('click', function () {
+                    const container = document.getElementById(`flagTextContainer${id}`);
+
+                    if (textAreaVisible[id]) {
+                        container.innerHTML = ''; // Clear the text area
+                        textAreaVisible[id] = false;
+                    } else {
+                        const textArea = document.createElement('textarea');
+                        textArea.id = `randomText${id}`;
+                        textArea.readOnly = true;
+                        textArea.value = button.getAttribute('data-code');
+                        textArea.style.width = '100%';
+                        textArea.style.height = '100px';
+
+                        container.innerHTML = ''; // Clear any existing content
+                        container.appendChild(textArea);
+                        textAreaVisible[id] = true;
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

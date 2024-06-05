@@ -1,3 +1,15 @@
+class Flag:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+
+    def get_id(self):
+        return str(self.id)
+    
+    def get_name(self):
+        return self.name
+        
+
 class Instruction:
     def __init__(self, address, opcodes, operation, text):
         self.address = address
