@@ -9,7 +9,20 @@ namespace UnitTests
 	TEST_CLASS(UnitTests)
 	{
 	public:
-		
+		TEST_METHOD(Call5PopEax)
+		{
+			// msfvenom -p windows/x64/exec CMD="calc.exe" --format c
+			unsigned char call5_popeax[] = { 0xE8, 0x00, 0x00, 0x00, 0x00, 0x58 };
+			unsigned int shemuStatus = 0;
+			uint64_t flags = 0;
+			char buffer[1000] = { 0 };
+			int status = AnalyzeShellcode(call5_popeax, sizeof(call5_popeax), false, &shemuStatus, &flags, buffer, 1000);
+			Assert::IsTrue(status == static_cast<int>(Status::Success));
+			Assert::IsTrue(shemuStatus == SHEMU_ABORT_BRANCH_OUTSIDE);
+			Assert::IsTrue(flags == 2);
+			Assert::IsTrue(flags & SHEMU_FLAG_LOAD_RIP);
+		}
+
 		TEST_METHOD(WindowsX64Exec)
 		{
 			// msfvenom -p windows/x64/exec CMD="calc.exe" --format c

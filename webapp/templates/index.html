@@ -7,16 +7,28 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: white;
+            color: black;
+        }
+        body.dark-mode {
+            background-color: #121212;
+            color: white;
         }
         .header {
-            background-color: blue;
+            background-color: rgb(0, 109, 255);
             color: white;
-            padding: 10px;
+            padding: 3px;
+            text-align: center;
+        }
+        .subheader {
+            background-color: red;
+            color: white;
+            padding: 1px;
             text-align: center;
         }
         .container {
             width: 80%;
-            margin: auto;
+            margin: 35px;
         }
         .column1 {
             float: left;
@@ -52,74 +64,70 @@
         .black {
             color: black;
         }
-        .flagBtn {
-            font-size: 14px;
+        .toggleBtn {
+            float: right;
+        }
+        textarea {
+            color: black;
+            background-color: rgb(181, 218, 250);
+        }
+
+        body.dark-mode textarea {
+            background-color: rgb(32, 31, 31);
+            color: white;
         }
     </style>
 </head>
 <body>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <div class="header">
         <h1>VisualShellcode</h1>
     </div>
+    <hr>
     
+    <div class="toggleBtn">
+        <button id="toggleButton" class="btn waves-effect waves-light">Dark Mode</button>
+    </div>
     <div class="container">
         <h2>Input shellcode as hex characters</h2>
         <form method="POST">
             <textarea name="text_input" rows="12" cols="100">{{ submitted_text }}</textarea><br><br>
             <label for="architecture">Architecture:</label>
-            <input type="radio" id="x86" name="architecture" value="x86" {% if architecture == 'x86' %}checked{% endif %}>
+            <input type="radio" id="x86" name="architecture" value="x86" {% if architecture == 'x86' %}checked{% endif %} checked>
             <label for="x86">x86</label>
-            <input type="radio" id="x64" name="architecture" value="x64" {% if architecture == 'x64' %}checked{% endif %} checked>
+            <input type="radio" id="x64" name="architecture" value="x64" {% if architecture == 'x64' %}checked{% endif %}>
             <label for="x64">x64</label><br><br>
             <input type="submit" value="Submit">
         </form>
+
+        <h2>Emulation</h2>
+        {% for flag in flags %}
+            <h4>{{flag.name}}</h4>
+            {% for instruction in flag.take_instructions(passed_instructions) %}
+            <div class="{{'red' if flag.is_this_it(instruction) == True else 'body'}}">
+                    <div class="row">
+                        <div class="column1">{{instruction.address}}</div>
+                        <div class="column2">{{instruction.opcodes}}</div>
+                        <div class="column3">{{instruction.operation}}</div>
+                        <div class="column4">{{instruction.text}}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endfor %}
+
         <h2>Disassembly</h2>
-        {% for instruction in processed_text %}
+        {% for instruction in instructions %}
             <div class="row">
-                <div class="{{'red' if instruction.has_flags() == True else 'black'}}">
                     <div class="column1">{{instruction.address}}</div>
                     <div class="column2">{{instruction.opcodes}}</div>
                     <div class="column3">{{instruction.operation}}</div>
                     <div class="column4">{{instruction.text}}</div>
-                    {% for flag in instruction.flags %}
-                        <button class="flagBtn" data-id="{{flag.get_id()}}" data-code="{{flag.get_name()}}">{{flag.name}}</button>
-                        <div class="textContainer" id="{{'flagTextContainer' + flag.get_id()}}"></div>
-                    {% endfor %}
-                </div>
             </div>
             
         {% endfor %}
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const textAreaVisible = {};
-            console.log("Main event triggered")
-            document.querySelectorAll('.flagBtn').forEach(button => {
-                const id = button.getAttribute('data-id');
-                textAreaVisible[id] = false;
-                console.log(id)
-
-                button.addEventListener('click', function () {
-                    const container = document.getElementById(`flagTextContainer${id}`);
-
-                    if (textAreaVisible[id]) {
-                        container.innerHTML = ''; // Clear the text area
-                        textAreaVisible[id] = false;
-                    } else {
-                        const textArea = document.createElement('textarea');
-                        textArea.id = `randomText${id}`;
-                        textArea.readOnly = true;
-                        textArea.value = button.getAttribute('data-code');
-                        textArea.style.width = '100%';
-                        textArea.style.height = '100px';
-
-                        container.innerHTML = ''; // Clear any existing content
-                        container.appendChild(textArea);
-                        textAreaVisible[id] = true;
-                    }
-                });
-            });
-        });
-    </script>
+    <div class="subheader">
+        <h3>Powered by <a href="https://github.com/bitdefender/bddisasm">https://github.com/bitdefender/bddisasm</a></h3>
+    </div>
 </body>
 </html>

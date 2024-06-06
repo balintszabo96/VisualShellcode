@@ -3,6 +3,9 @@
 #include <stdarg.h>
 #include <Windows.h>
 #include "BdshemuCaller.hpp"
+#include <vector>
+#include <string>
+#include <memory>
 
 extern "C" {
 #if !defined(BDDISASM_HAS_VSNPRINTF)
@@ -59,6 +62,7 @@ typedef struct _LOGCTX {
     PSHEMU_CONTEXT CurrentCtx;
     PSHEMU_CONTEXT PrevCtx;
     FLAGS FlagInfo = { 0 };
+    std::shared_ptr<std::vector<std::pair<uint64_t, std::string>>> TraversedInstructions;
 }LOGCTX, *PLOGCTX;
 
 typedef struct _FLAG_NAME
@@ -87,14 +91,96 @@ static FLAG_NAME gFlagNames[] =
 };
 static uint16_t gFlagNamesSize = _ARRAYSIZE(gFlagNames);
 
+const char* gSpaces[16] =
+{
+    "",
+    "  ",
+    "    ",
+    "      ",
+    "        ",
+    "          ",
+    "            ",
+    "              ",
+    "                ",
+    "                  ",
+    "                    ",
+    "                      ",
+    "                        ",
+    "                          ",
+    "                            ",
+    "                              ",
+};
+
+void
+print_instruction(
+    __in SIZE_T Rip,
+    __in PINSTRUX Instrux,
+    __in char* Buffer,
+    __in uint64_t BufSize
+)
+{
+    char instruxText[ND_MIN_BUF_SIZE];
+    DWORD k = 0, idx = 0, i = 0;
+    CHAR tempBuf[1000] = { 0 };
+
+    sprintf_s(tempBuf, 1000, "%p ", (void*)(Rip));
+    strcat_s(Buffer, BufSize, tempBuf);
+    RtlZeroMemory(tempBuf, 1000);
+
+    for (; k < Instrux->Length; k++)
+    {
+        sprintf_s(tempBuf, 1000, "%02x", Instrux->InstructionBytes[k]);
+        strcat_s(Buffer, BufSize, tempBuf);
+        RtlZeroMemory(tempBuf, 1000);
+    }
+
+    //sprintf_s(tempBuf, 1000, "%s", gSpaces[16 - (Instrux->Length & 0xF)]);
+    strcat_s(Buffer, BufSize, " ");
+    //RtlZeroMemory(tempBuf, 1000);
+
+    NdToText(Instrux, Rip, ND_MIN_BUF_SIZE, instruxText);
+
+    sprintf_s(tempBuf, 1000, "%s\n", instruxText);
+    strcat_s(Buffer, BufSize, tempBuf);
+    RtlZeroMemory(tempBuf, 1000);
+}
+
 void
 InstructionCallback(
     char* Data,
     void* Context
 )
 {
-    Data;
     PLOGCTX ctx = reinterpret_cast<PLOGCTX>(Context);
+    uint64_t instrOffset = 0;
+    if (ctx->CurrentCtx->InstructionsCount > 1)
+    {
+        instrOffset = ctx->PrevCtx->Registers.RegRip - ctx->PrevCtx->ShellcodeBase;
+    }
+    else
+    {
+        instrOffset = ctx->CurrentCtx->Registers.RegRip - ctx->CurrentCtx->ShellcodeBase;
+    }
+
+    if (Data && strstr(Data, "Emulating"))
+    {
+        bool found = false;
+        for (auto const& addrInstr : *ctx->TraversedInstructions.get())
+        {
+            if (addrInstr.first == instrOffset)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            CHAR tempBuf[100] = { 0 };
+            print_instruction(instrOffset, &ctx->CurrentCtx->Instruction, tempBuf, 100);
+            auto pr = std::make_pair(instrOffset, std::string(tempBuf));
+            ctx->TraversedInstructions->emplace_back(std::move(pr));
+        }
+    }
     if (ctx->CurrentCtx->Flags != ctx->PrevCtx->Flags)
     {
         uint64_t negatedUntilNow = ~ctx->PrevCtx->Flags;
@@ -104,15 +190,7 @@ InstructionCallback(
         {
             if ((newFlags & gFlagNames[i].Flag) == gFlagNames[i].Flag)
             {
-                PSHEMU_CONTEXT ctxAddress = nullptr;
-                if (ctx->CurrentCtx->InstructionsCount > 1)
-                {
-                    ctx->FlagInfo.Flags[ctx->FlagInfo.LastUsedIndex].Address = ctx->PrevCtx->Registers.RegRip - ctx->PrevCtx->ShellcodeBase;
-                }
-                else
-                {
-                    ctx->FlagInfo.Flags[ctx->FlagInfo.LastUsedIndex].Address = ctx->CurrentCtx->Registers.RegRip - ctx->CurrentCtx->ShellcodeBase;
-                }
+                ctx->FlagInfo.Flags[ctx->FlagInfo.LastUsedIndex].Address = instrOffset;
                 ctx->FlagInfo.Flags[ctx->FlagInfo.LastUsedIndex].Flag = gFlagNames[i].Name;
                 ctx->FlagInfo.LastUsedIndex++;
             }
@@ -122,7 +200,7 @@ InstructionCallback(
 }
 
 int
-AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned int* ShemuStatus, uint64_t* Flags, char* Buffer, uint64_t BufSize)
+AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned int* ShemuStatus, uint64_t* Flags, char* Buffer, uint64_t BufSize, char* InstrBuffer, uint64_t InstrBufferSize)
 {
     Status status = Status::Unsuccessful;
     uint64_t shellcodeAddress = reinterpret_cast<uint64_t>(Shellcode);
@@ -159,6 +237,13 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
 
     logCtx->CurrentCtx = ctx;
     logCtx->PrevCtx = prevCtx;
+    logCtx->TraversedInstructions = std::make_shared<std::vector<std::pair<uint64_t, std::string>>>();
+    //{
+    //    CHAR temp[100] = { 0 };
+    //    strcpy_s(temp, 100, "balint");
+    //    logCtx->TraversedInstructions.emplace_back(1, temp);
+    //}
+    //logCtx->TraversedInstructions.emplace_back(2, "ervin");
 
     // set shellcode address
     ctx->Shellcode = reinterpret_cast<ND_UINT8*>(shellcodeAddress);
@@ -241,6 +326,8 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
     ctx->Log = InstructionCallback;
     ctx->LogContext = logCtx;
     *ShemuStatus = ShemuEmulate(ctx);
+    // call one last time so that we get the flag even if it's at the last instruction
+    InstructionCallback(NULL, logCtx);
     *Flags = ctx->Flags;
 
     for (uint16_t i = 0; i < logCtx->FlagInfo.LastUsedIndex; i++)
@@ -251,6 +338,22 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
         if (tempBufLen < BufSize - bufUsed)
         {
             strcat_s(Buffer, BufSize, tempBuf);
+        }
+        else
+        {
+            break;
+        }
+        RtlZeroMemory(tempBuf, tempBufLen);
+    }
+
+    for (auto const& instrAddr : *logCtx->TraversedInstructions.get())
+    {
+        sprintf_s(tempBuf, 100, "%s", instrAddr.second.c_str());
+        uint64_t tempBufLen = strlen(tempBuf);
+        uint64_t bufUsed = strlen(InstrBuffer);
+        if (tempBufLen < InstrBufferSize - bufUsed)
+        {
+            strcat_s(InstrBuffer, InstrBufferSize, tempBuf);
         }
         else
         {
@@ -279,63 +382,10 @@ cleanup:
     }
     if (logCtx)
     {
+        logCtx->TraversedInstructions->clear();
         free(logCtx);
     }
     return static_cast<int>(status);
-}
-
-const char* gSpaces[16] =
-{
-    "",
-    "  ",
-    "    ",
-    "      ",
-    "        ",
-    "          ",
-    "            ",
-    "              ",
-    "                ",
-    "                  ",
-    "                    ",
-    "                      ",
-    "                        ",
-    "                          ",
-    "                            ",
-    "                              ",
-};
-
-void
-print_instruction(
-    __in SIZE_T Rip,
-    __in PINSTRUX Instrux,
-    __in char* Buffer,
-    __in uint64_t BufSize
-)
-{
-    char instruxText[ND_MIN_BUF_SIZE];
-    DWORD k = 0, idx = 0, i = 0;
-    CHAR tempBuf[1000] = { 0 };
-
-    sprintf_s(tempBuf, 1000, "%p ", (void*)(Rip));
-    strcat_s(Buffer, BufSize, tempBuf);
-    RtlZeroMemory(tempBuf, 1000);
-
-    for (; k < Instrux->Length; k++)
-    {
-        sprintf_s(tempBuf, 1000, "%02x", Instrux->InstructionBytes[k]);
-        strcat_s(Buffer, BufSize, tempBuf);
-        RtlZeroMemory(tempBuf, 1000);
-    }
-
-    sprintf_s(tempBuf, 1000, "%s", gSpaces[16 - (Instrux->Length & 0xF)]);
-    strcat_s(Buffer, BufSize, tempBuf);
-    RtlZeroMemory(tempBuf, 1000);
-
-    NdToText(Instrux, Rip, ND_MIN_BUF_SIZE, instruxText);
-
-    sprintf_s(tempBuf, 1000, "%s\n", instruxText);
-    strcat_s(Buffer, BufSize, tempBuf);
-    RtlZeroMemory(tempBuf, 1000);
 }
 
 int
