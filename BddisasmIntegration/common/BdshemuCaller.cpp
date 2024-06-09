@@ -112,6 +112,17 @@ const char* gSpaces[16] =
 };
 
 void
+CatToBuffer(char* Dst, uint64_t DstSize, char* Src)
+{
+    uint64_t dstUsed = strlen(Dst);
+    uint64_t dstRemaining = DstSize - dstUsed;
+    if (dstRemaining > strlen(Src))
+    {
+        strcat_s(Dst, DstSize, Src);
+    }
+}
+
+void
 print_instruction(
     __in SIZE_T Rip,
     __in PINSTRUX Instrux,
@@ -124,13 +135,13 @@ print_instruction(
     CHAR tempBuf[1000] = { 0 };
 
     sprintf_s(tempBuf, 1000, "%p ", (void*)(Rip));
-    strcat_s(Buffer, BufSize, tempBuf);
+    CatToBuffer(Buffer, BufSize, tempBuf);
     RtlZeroMemory(tempBuf, 1000);
 
     for (; k < Instrux->Length; k++)
     {
         sprintf_s(tempBuf, 1000, "%02x", Instrux->InstructionBytes[k]);
-        strcat_s(Buffer, BufSize, tempBuf);
+        CatToBuffer(Buffer, BufSize, tempBuf);
         RtlZeroMemory(tempBuf, 1000);
     }
 
@@ -141,7 +152,7 @@ print_instruction(
     NdToText(Instrux, Rip, ND_MIN_BUF_SIZE, instruxText);
 
     sprintf_s(tempBuf, 1000, "%s\n", instruxText);
-    strcat_s(Buffer, BufSize, tempBuf);
+    CatToBuffer(Buffer, BufSize, tempBuf);
     RtlZeroMemory(tempBuf, 1000);
 }
 
@@ -435,24 +446,27 @@ DisassembleShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, char
 #else
         iend = 1;
 #endif
-
+        if (BufSize - strlen(Buffer) < 150)
+        {
+            return 99;
+        }
         itotal += iend - istart;
         if (!ND_SUCCESS(status))
         {
             sprintf_s(tempBuf, 1000, "%p ", (void*)(rip));
-            strcat_s(Buffer, BufSize, tempBuf);
+            CatToBuffer(Buffer, BufSize, tempBuf);
             RtlZeroMemory(tempBuf, 1000);
 
             sprintf_s(tempBuf, 1000, "%02x", buffer[rip]);
-            strcat_s(Buffer, BufSize, tempBuf);
+            CatToBuffer(Buffer, BufSize, tempBuf);
             RtlZeroMemory(tempBuf, 1000);
 
             sprintf_s(tempBuf, 1000, "%s", gSpaces[16 - 1]);
-            strcat_s(Buffer, BufSize, tempBuf);
+            CatToBuffer(Buffer, BufSize, tempBuf);
             RtlZeroMemory(tempBuf, 1000);
 
             sprintf_s(tempBuf, 1000, "db 0x%02x (0x%08x)\n", buffer[rip], status);
-            strcat_s(Buffer, BufSize, tempBuf);
+            CatToBuffer(Buffer, BufSize, tempBuf); 
             RtlZeroMemory(tempBuf, 1000);
 
             rip++;
