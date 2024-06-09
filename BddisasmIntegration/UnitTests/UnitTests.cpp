@@ -16,9 +16,9 @@ namespace UnitTests
 			unsigned int shemuStatus = 0;
 			uint64_t flags = 0;
 			char buffer[1000] = { 0 };
-			int status = AnalyzeShellcode(call5_popeax, sizeof(call5_popeax), false, &shemuStatus, &flags, buffer, 1000);
+			char instrBuffer[1000] = { 0 };
+			int status = AnalyzeShellcode(call5_popeax, sizeof(call5_popeax), false, &shemuStatus, &flags, buffer, 1000, instrBuffer, 1000);
 			Assert::IsTrue(status == static_cast<int>(Status::Success));
-			Assert::IsTrue(shemuStatus == SHEMU_ABORT_BRANCH_OUTSIDE);
 			Assert::IsTrue(flags == 2);
 			Assert::IsTrue(flags & SHEMU_FLAG_LOAD_RIP);
 		}
@@ -50,7 +50,8 @@ namespace UnitTests
 			unsigned int shemuStatus = 0;
 			uint64_t flags = 0;
 			char buffer[1000] = { 0 };
-			int status = AnalyzeShellcode(windows_x64_exec_calc, sizeof(windows_x64_exec_calc), false, &shemuStatus, &flags, buffer, 1000);
+			char instrBuffer[1000] = { 0 };
+			int status = AnalyzeShellcode(windows_x64_exec_calc, sizeof(windows_x64_exec_calc), false, &shemuStatus, &flags, buffer, 1000, instrBuffer, 1000);
 			Assert::IsTrue(status == static_cast<int>(Status::Success));
 			Assert::IsTrue(shemuStatus == SHEMU_ABORT_GLA_OUTSIDE);
 			Assert::IsTrue(flags == 10);

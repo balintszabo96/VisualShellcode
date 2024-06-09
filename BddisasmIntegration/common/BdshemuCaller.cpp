@@ -155,14 +155,14 @@ InstructionCallback(
     uint64_t instrOffset = 0;
     if (ctx->CurrentCtx->InstructionsCount > 1)
     {
-        instrOffset = ctx->PrevCtx->Registers.RegRip - ctx->PrevCtx->ShellcodeBase;
+        instrOffset = ctx->PrevCtx->Arch.X86.Registers.RegRip - ctx->PrevCtx->ShellcodeBase;
     }
     else
     {
-        instrOffset = ctx->CurrentCtx->Registers.RegRip - ctx->CurrentCtx->ShellcodeBase;
+        instrOffset = ctx->CurrentCtx->Arch.X86.Registers.RegRip - ctx->CurrentCtx->ShellcodeBase;
     }
 
-    if (Data && strstr(Data, "Emulating"))
+    if (Data && strstr(Data, "IP:"))
     {
         bool found = false;
         for (auto const& addrInstr : *ctx->TraversedInstructions.get())
@@ -176,7 +176,7 @@ InstructionCallback(
         if (!found)
         {
             CHAR tempBuf[100] = { 0 };
-            print_instruction(instrOffset, &ctx->CurrentCtx->Instruction, tempBuf, 100);
+            print_instruction(instrOffset, &ctx->CurrentCtx->Arch.X86.Instruction, tempBuf, 100);
             auto pr = std::make_pair(instrOffset, std::string(tempBuf));
             ctx->TraversedInstructions->emplace_back(std::move(pr));
         }
@@ -250,10 +250,10 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
 
     // base must be on 32 bits if the shellcode is of 32 bits
     ctx->ShellcodeBase = (Is32Bit) ? (0xffffffff & shellcodeAddress) : shellcodeAddress;
-    ctx->Registers.RegRip = (Is32Bit) ? (0xffffffff & shellcodeAddress) : shellcodeAddress;
+    ctx->Arch.X86.Registers.RegRip = (Is32Bit) ? (0xffffffff & shellcodeAddress) : shellcodeAddress;
     ctx->ShellcodeSize = Size;
-    ctx->Ring = 3;
-    ctx->Mode = (Is32Bit) ? ND_CODE_32 : ND_CODE_64;
+    ctx->Arch.X86.Ring = 3;
+    ctx->Arch.X86.Mode = (Is32Bit) ? ND_CODE_32 : ND_CODE_64;
     ctx->StackSize = 0x2000;
     stack = reinterpret_cast<uint8_t*>(malloc(ctx->StackSize));
     if (!stack)
@@ -266,7 +266,7 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
     // TODO: Make this safe
     // stack starts at high addresses, so we add Stack + StackSize
     // by decrementing it, we simulate allocating space for variables
-    ctx->Registers.RegRsp = reinterpret_cast<uint64_t>(ctx->Stack) + ctx->StackSize - 0x100;
+    ctx->Arch.X86.Registers.RegRsp = reinterpret_cast<uint64_t>(ctx->Stack) + ctx->StackSize - 0x100;
     ctx->StackBase = (Is32Bit) ? (0xffffffff & reinterpret_cast<uint64_t>(stack)) : reinterpret_cast<uint64_t>(stack);
 
     // TODO: Make this safe
@@ -286,45 +286,46 @@ AnalyzeShellcode(unsigned char* Shellcode, uint32_t Size, bool Is32Bit, unsigned
     ctx->StrThreshold = 8;
     ctx->MemThreshold = 100;
 
-    ctx->Registers.RegCr0 = 0x80050031;
-    ctx->Registers.RegCr2 = 0;
-    ctx->Registers.RegCr3 = 0x1aa000;
-    ctx->Registers.RegCr4 = 0x170678;
-    ctx->Registers.RegFlags = 0x202;
+    ctx->Arch.X86.Registers.RegCr0 = 0x80050031;
+    ctx->Arch.X86.Registers.RegCr2 = 0;
+    ctx->Arch.X86.Registers.RegCr3 = 0x1aa000;
+    ctx->Arch.X86.Registers.RegCr4 = 0x170678;
+    ctx->Arch.X86.Registers.RegFlags = 0x202;
 
     ctx->TibBase = Is32Bit ? 0xCABC0000 : 0x00008ABC00000000;
 
-    if (ctx->Mode == ND_CODE_64)
+    if (ctx->Arch.X86.Mode == ND_CODE_64)
     {
-        ctx->Segments.Cs.Selector = (ctx->Ring == 3) ? 0x33 : 0x10;
-        ctx->Segments.Ds.Selector = (ctx->Ring == 3) ? 0x2b : 0x18;
-        ctx->Segments.Es.Selector = (ctx->Ring == 3) ? 0x2b : 0x18;
-        ctx->Segments.Ss.Selector = (ctx->Ring == 3) ? 0x2b : 0x18;
-        ctx->Segments.Fs.Selector = (ctx->Ring == 3) ? 0x2b : 0x00;
-        ctx->Segments.Gs.Selector = (ctx->Ring == 3) ? 0x53 : 0x00;
+        ctx->Arch.X86.Segments.Cs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x33 : 0x10;
+        ctx->Arch.X86.Segments.Ds.Selector = (ctx->Arch.X86.Ring == 3) ? 0x2b : 0x18;
+        ctx->Arch.X86.Segments.Es.Selector = (ctx->Arch.X86.Ring == 3) ? 0x2b : 0x18;
+        ctx->Arch.X86.Segments.Ss.Selector = (ctx->Arch.X86.Ring == 3) ? 0x2b : 0x18;
+        ctx->Arch.X86.Segments.Fs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x2b : 0x00;
+        ctx->Arch.X86.Segments.Gs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x53 : 0x00;
 
-        ctx->Segments.Fs.Base = 0;
-        ctx->Segments.Gs.Base = 0;
-        ctx->TibBase = ctx->Segments.Gs.Base;
+        ctx->Arch.X86.Segments.Fs.Base = 0;
+        ctx->Arch.X86.Segments.Gs.Base = 0;
+        ctx->TibBase = ctx->Arch.X86.Segments.Gs.Base;
     }
     else
     {
-        ctx->Segments.Cs.Selector = (ctx->Ring == 3) ? 0x1b : 0x08;
-        ctx->Segments.Ds.Selector = (ctx->Ring == 3) ? 0x23 : 0x10;
-        ctx->Segments.Es.Selector = (ctx->Ring == 3) ? 0x23 : 0x10;
-        ctx->Segments.Ss.Selector = (ctx->Ring == 3) ? 0x23 : 0x10;
-        ctx->Segments.Fs.Selector = (ctx->Ring == 3) ? 0x3b : 0x30;
-        ctx->Segments.Gs.Selector = (ctx->Ring == 3) ? 0x23 : 0x00;
+        ctx->Arch.X86.Segments.Cs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x1b : 0x08;
+        ctx->Arch.X86.Segments.Ds.Selector = (ctx->Arch.X86.Ring == 3) ? 0x23 : 0x10;
+        ctx->Arch.X86.Segments.Es.Selector = (ctx->Arch.X86.Ring == 3) ? 0x23 : 0x10;
+        ctx->Arch.X86.Segments.Ss.Selector = (ctx->Arch.X86.Ring == 3) ? 0x23 : 0x10;
+        ctx->Arch.X86.Segments.Fs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x3b : 0x30;
+        ctx->Arch.X86.Segments.Gs.Selector = (ctx->Arch.X86.Ring == 3) ? 0x23 : 0x00;
 
-        ctx->Segments.Fs.Base = 0;
-        ctx->Segments.Gs.Base = 0;
-        ctx->TibBase = ctx->Segments.Fs.Base;
+        ctx->Arch.X86.Segments.Fs.Base = 0;
+        ctx->Arch.X86.Segments.Gs.Base = 0;
+        ctx->TibBase = ctx->Arch.X86.Segments.Fs.Base;
     }
 
     ctx->AccessMemory = MemAccess;
     ctx->Options |= SHEMU_OPT_TRACE_EMULATION;
     ctx->Log = InstructionCallback;
-    ctx->LogContext = logCtx;
+    ctx->AuxData = logCtx;
+    ctx->ArchType = SHEMU_ARCH_TYPE_X86;
     *ShemuStatus = ShemuEmulate(ctx);
     // call one last time so that we get the flag even if it's at the last instruction
     InstructionCallback(NULL, logCtx);
