@@ -24,6 +24,6 @@ def index():
                            plugins_to_include = manager.getHtmlFiles())
 
 if __name__ == '__main__':
-    manager.loadPlugins()
+    manager.loadPlugins(sys.argv[1])
     app.run(debug=True)
     #app.run(host='192.168.100.66', port=5000, debug=True)
