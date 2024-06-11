@@ -99,31 +99,8 @@
             <label for="x64">x64</label><br><br>
             <input type="submit" value="Submit">
         </form>
-
-        <h2>Emulation</h2>
-        {% for flag in flags %}
-            <h4>{{flag.name}}</h4>
-            {% for instruction in flag.take_instructions(passed_instructions) %}
-            <div class="{{'red' if flag.is_this_it(instruction) == True else 'body'}}">
-                    <div class="row">
-                        <div class="column1">{{instruction.address}}</div>
-                        <div class="column2">{{instruction.opcodes}}</div>
-                        <div class="column3">{{instruction.operation}}</div>
-                        <div class="column4">{{instruction.text}}</div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% endfor %}
-
-        <h2>Disassembly</h2>
-        {% for instruction in instructions %}
-            <div class="row">
-                    <div class="column1">{{instruction.address}}</div>
-                    <div class="column2">{{instruction.opcodes}}</div>
-                    <div class="column3">{{instruction.operation}}</div>
-                    <div class="column4">{{instruction.text}}</div>
-            </div>
-            
+        {% for plugin in plugins_to_include %}
+            {% include plugin %}
         {% endfor %}
     </div>
     <div class="subheader">

@@ -1,3 +1,0 @@
-[submodule "bddisasm"]
-	path = bddisasm
-	url = git@github.com:bitdefender/bddisasm.git
