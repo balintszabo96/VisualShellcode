@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 import sys
+import requests
 from utils.PluginManager import PluginManager
 
 app = Flask(__name__)
@@ -17,6 +18,12 @@ def index():
     if request.method == 'POST':
         submitted_text = request.form['text_input']
         architecture = request.form['architecture']
+        if manager.is32BitPython() and architecture == "x64":
+            response = requests.post("http://localhost:5000", data={'text_input': submitted_text, 'architecture': architecture})
+            return response.text
+        elif not manager.is32BitPython() and architecture == "x86":
+            response = requests.post("http://localhost:5001", data={'text_input': submitted_text, 'architecture': architecture})
+            return response.text
         pluginResults = process(submitted_text, architecture)
     return render_template('index.html', 
                            submitted_text=submitted_text, 
