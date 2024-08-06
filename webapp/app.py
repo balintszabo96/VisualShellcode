@@ -25,5 +25,8 @@ def index():
 
 if __name__ == '__main__':
     manager.loadPlugins(sys.argv[1])
-    app.run(debug=True)
+    if manager.is32BitPython():
+        app.run(debug=True, port=5001)
+    else:
+        app.run(debug=True, port=5000)
     #app.run(host='192.168.100.66', port=5000, debug=True)

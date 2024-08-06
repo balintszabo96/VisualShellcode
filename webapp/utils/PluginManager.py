@@ -3,6 +3,7 @@ import importlib
 import sys
 import ctypes
 import shutil
+import struct
 
 class Plugin:
     def __init__(self, name, packageName, instance, dllHandle):
@@ -22,6 +23,7 @@ class PluginManager:
     def runPlugins(self, input, architecture):
         result_dict = {}
         for plugin in self.plugins:
+            print(f"Running plugin {plugin.packageName}")
             result_dict[plugin.packageName] = plugin.call(input, architecture)
         return result_dict
     
@@ -31,15 +33,21 @@ class PluginManager:
     def loadPlugins(self, pluginDirs):
         sys.path.append(pluginDirs)
         for plugin in os.listdir(pluginDirs):
+            print(f"Initializing plugin {plugin}")
             moduleName = plugin
             pluginClassName = None
             dllPath = None
             htmlName = None
+            dllHandle = None
             for file in os.listdir(os.path.join(pluginDirs, plugin)):
                 if file.endswith('Plugin.py'):
                     pluginClassName = file.replace('.py', '')
-                if file.endswith('.dll'):
-                    dllPath = os.path.join(pluginDirs, os.path.join(plugin, file))
+                if PluginManager.is32BitPython():
+                    if file.endswith('32.dll'):
+                        dllPath = os.path.join(pluginDirs, os.path.join(plugin, file))
+                else:
+                    if file.endswith('64.dll'):
+                        dllPath = os.path.join(pluginDirs, os.path.join(plugin, file))
                 if file.endswith('.html'):
                     htmlName = file
             htmlSrcPath = os.path.join(pluginDirs, os.path.join(plugin, htmlName))
@@ -50,5 +58,11 @@ class PluginManager:
             module = importlib.import_module(fullModuleName)
             class_ = getattr(module, pluginClassName)
             instance = class_()
-            dllHandle = ctypes.WinDLL(dllPath)
+            if dllPath:
+                print(f"Loaded {dllPath}")
+                dllHandle = ctypes.WinDLL(dllPath)
             self.plugins.append(Plugin(pluginClassName, plugin, instance, dllHandle))
+
+    @staticmethod
+    def is32BitPython():
+        return 8 * struct.calcsize("P") == 32
