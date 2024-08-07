@@ -8,6 +8,8 @@ manager = PluginManager()
 
 def process(input_text, architecture):
     preprocessed_text = input_text.replace(' ', '')
+    if len(preprocessed_text) % 2 == 1:
+        preprocessed_text += '0'
     pluginResults = manager.runPlugins(preprocessed_text, architecture)
     return pluginResults
 
